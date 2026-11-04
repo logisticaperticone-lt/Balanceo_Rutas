@@ -158,7 +158,7 @@ td select{padding:3px 4px}
   </div>
 
   <div class="card">
-    <h2 id="cliTitle">Clientes</h2>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><h2 id="cliTitle" style="margin:0">Clientes</h2><span class="sp"></span><span class="small mute">Respeta los filtros de arriba · ordenado por más meses sin compra</span><button class="btn" id="btnXlsCli">⬇ Exportar tabla a Excel</button></div>
     <div class="tw" style="max-height:70vh"><table id="tCli"></table></div>
     <div class="more" id="more"></div>
   </div>
@@ -663,6 +663,22 @@ $('btnXls').onclick=()=>{
   add(s1,'Balanceo vendedor',[12,22,9,28]);add(s2,'Balanceo ruta',[22,9,28,7]);add(s3,'Clientes',[22,9,26,7,10,32,20,12,10,10,10,60]);
   const f=[$('fSup').value,$('fVnd').value&&('vnd'+$('fVnd').value)].filter(Boolean).join('_').replace(/[^\w]+/g,'_');
   XLSX.writeFile(wb,`balanceo_${f?f+'_':''}${stamp()}.xlsx`);toast(`Exportado: ${rows.length} clientes`);
+};
+
+$('btnXlsCli').onclick=()=>{
+  if(!needXLSX())return;const rows=filtered(false);if(!rows.length){toast('No hay clientes en el filtro');return}
+  const r1=x=>Math.round(x*10)/10,ds=d=>DIAS.filter((_,j)=>d[j]).join(','),num=x=>isNaN(+x)?x:+x;
+  const TR={'0':'CCC','1':'1-2 meses','3':'3-5 meses','6':'6-11 meses','12':'12+ meses','n':'Nunca compró','':''};
+  const key=r=>r.sin==null?-1:r.sin+(r.nunca?0.5:0);
+  const out=[['Supervisor','Vendedor','Nombre vendedor','Ruta','Cliente','Razón social','Subcanal','Últ. compra','Meses sin compra','Antigüedad','Bultos último mes','Bultos prom/mes','Sugerencia','Periodicidad','Pasa en','Días de visita','Ruta nueva','Modificado','Modificado por']];
+  for(const r of rows.slice().sort((a,b)=>key(b)-key(a)||(+a.vnd||999)-(+b.vnd||999)||(a.r0-b.r0))){const c=cur(r),m=isMod(r);
+    out.push([supOf(r.vnd),r.vnd==='S/V'?'':+r.vnd,NOMBRES[r.vnd]||'',num(r.r0),num(r.cli),r.rs||'',r.sub||'',r.ult?String(r.ult).slice(0,10):'',r.sin??'',TR[r.tramo]??'',r1(r.bUlt),r1(r.prom),r.sug?(c.p===r.sug.to?'Aplicada: ':'')+r.sug.txt:'',
+      m&&c.p!==r.p0?`${r.p0} → ${c.p}`:c.p,m&&c.w!==r.w0?`${r.w0} → ${c.w}`:c.w,m&&ds(c.d)!==ds(r.d0)?`${ds(r.d0)} → ${ds(c.d)}`:ds(c.d),num(c.ruta),m?'SÍ':'NO',m&&c.user?c.user:''])}
+  const ws=XLSX.utils.aoa_to_sheet(out);ws['!cols']=[22,9,26,7,10,34,20,12,10,13,10,10,70,12,9,16,10,10,16].map(w=>({wch:w}));
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:out.length-1,c:out[0].length-1}})};
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Clientes');
+  const f=[$('fSup').value,$('fVnd').value&&('vnd'+$('fVnd').value)].filter(Boolean).join('_').replace(/[^\w]+/g,'_');
+  XLSX.writeFile(wb,`clientes_balanceo_${f?f+'_':''}${stamp()}.xlsx`);toast(`Exportados ${rows.length} clientes`);
 };
 /* ---------------- carga de bases ---------------- */
 /* ---- lector xlsx por streaming (para bases grandes de venta) ---- */
